@@ -1,7 +1,7 @@
 import logging
 
-logger = logging.getLogger(__name__)
-logger.info("Initializing logger...")
+logger = logging.getLogger("botframe")
+logger.info("Running botframe...")
 
 from . import configuration
 

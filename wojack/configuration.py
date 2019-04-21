@@ -1,8 +1,8 @@
 import json
 import logging
 
-logger = logging.getLogger(__name__)
-logger.info("Initializing logger...")
+logger = logging.getLogger("configuration")
+logger.info("Running configuration...")
 
 def loadConfig():
     global config

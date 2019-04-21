@@ -1,7 +1,7 @@
 import logging
 
-logger = logging.getLogger(__name__)
-logger.info("Initializing logger...")
+logger = logging.getLogger("commands")
+logger.info("Running commands...")
 
 import sys
 from . import configuration

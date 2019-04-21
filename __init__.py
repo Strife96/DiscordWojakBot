@@ -1,7 +1,7 @@
 import logging
 import os
 
-
+LOGGER_NAMES = ["__init__", "botframe", "commands", "configuration"]
 
 if os.path.exists("WojacksBadDay"):
     mode = "a"
@@ -14,8 +14,11 @@ logging.basicConfig(level=logging.INFO,
                     filename='WojacksBadDay',
                     filemode=mode)
 
-logger = logging.getLogger(__name__)
-logger.info("Initializing logger...")
+for name in LOGGER_NAMES:
+    logger = logging.getLogger(name)
+    if name == "__init__":
+        logger.info("\n<----- Wojack is getting out of bed ----->\n")
+    logger.info("Initializing module logger...")
 
 import wojack.configuration
 import wojack.botframe
