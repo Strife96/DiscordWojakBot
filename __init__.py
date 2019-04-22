@@ -1,9 +1,9 @@
 import logging
 import os
 
-LOGGER_NAMES = ["__init__", "botframe", "commands", "configuration"]
+LOGGER_NAMES = ["__init__", "botframe", "commands", "config"]
 
-if os.path.exists("WojacksBadDay"):
+if os.path.exists("WojaksBadDay"):
     mode = "a"
 else:
     mode = "w"
@@ -11,18 +11,18 @@ else:
 #set up logging to file
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s %(name)s : %(message)s', 
-                    filename='WojacksBadDay',
+                    filename='WojaksBadDay',
                     filemode=mode)
 
 for name in LOGGER_NAMES:
     logger = logging.getLogger(name)
     if name == "__init__":
-        logger.info("\n<----- Wojack is getting out of bed ----->\n")
+        logger.info("\n<----- Wojak is getting out of bed ----->\n")
     logger.info("Initializing module logger...")
 
-import wojack.configuration
-import wojack.botframe
-import wojack.commands
+import wojak.config
+import wojak.botframe
+import wojak.commands
 
-wojack.botframe.bot.run(wojack.configuration.config['bot']['token'])
+wojak.botframe.bot.run(wojak.config.cfg['bot']['token'])
 

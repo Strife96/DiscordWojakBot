@@ -1,15 +1,15 @@
 import json
 import logging
 
-logger = logging.getLogger("configuration")
-logger.info("Running configuration...")
+logger = logging.getLogger("config")
+logger.info("Running config...")
 
 def loadConfig():
-    global config
+    global cfg
     try:
         with open("config.json", "r") as f:
             try:
-                config = json.load(f)
+                cfg = json.load(f)
                 logger.info("configuration loaded successfully!")
                 return True
             except json.decoder.JSONDecodeError as e:
