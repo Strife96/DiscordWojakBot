@@ -1,7 +1,7 @@
 import logging
 import os
 
-LOGGER_NAMES = ["__init__", "botframe", "commands", "config"]
+LOGGER_NAMES = ["__init__", "botframe", "commands", "config", "database", "functions"]
 
 if os.path.exists("WojaksBadDay"):
     mode = "a"
@@ -23,6 +23,7 @@ for name in LOGGER_NAMES:
 import wojak.config
 import wojak.botframe
 import wojak.commands
+import wojak.database
 
 wojak.botframe.bot.run(wojak.config.cfg['bot']['token'])
 
