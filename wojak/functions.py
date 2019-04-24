@@ -23,16 +23,20 @@ def blobToFile(name, blob):
         logger.critical("an error occured while reading/writing files. {0}".format(e))
     return newFile
 
-def removeTemp():
-    os.remove(TEMP)
-
-def imgToBlob(filename):
+async def fileToBlob(attach):
+    buf = io.BytesIO()
     blob = None
-    try:
-        with open(filename, "rb") as fp:
-            blob = fp.read()
-    except FileNotFoundError as e:
-        logger.critical("filename used to create blob not found. {0}".format(e))
+    if attach.height: # a hacky check, but this attribute only exists for images
+        try:
+            await attach.save(buf)
+            with buf as fp:
+                blob = buf.read()
+        except Exception as e: # ensure that blob is always None if error occurs, but relay error to log
+            logger.critical("error occured while blobbing file. {0}".format(e))
+            blob = None
+    else:
+        logger.critical("attachment was not an image...")
+        blob = None
     return blob
 
 def isDupe(db, newID):
@@ -42,18 +46,35 @@ def isDupe(db, newID):
             return True
     return False
 
-def addToDB(db, blob, pool):
+def getExtension(attach):
+    return ("." + attach.filename.split(".")[-1])
+
+def addToDB(db, blob, extension, pool):
     digest = sha256(blob).hexdigest()
     digestStr = str(digest)
     imgID = int(digestStr, 16) % MAX_SQLINT
-    name = digestStr + ".jpg"
+    name = digestStr + extension
+    logger.info("name is {0}...".format(name))
     if isDupe(db, imgID):
         logger.info("duplicate image not added, hash {0}".format(imgID))
         return pool
     else:
         db.execute("insert into wojaks values (?, ?, ?)", (imgID, name, blob))
         logger.info("logging new image with id {0} , and name {1}".format(imgID, name))
-        return resetPool(db)
+        return addToPool(pool, imgID)
+
+def removeFromDB(db, name, pool):
+    try:
+        db.execute("select distinct id, name from wojaks where name = ?", (name,))
+        toRemove = db.fetchone()
+        imgID = toRemove[0]
+        name = toRemove[1]
+        db.execute("delete from wojaks where id = ? and name = ?", (imgID, name))
+        logger.info("deleted img with id = {0} and name = {1}".format(imgID, name))
+        return removeFromPool(pool, imgID)
+    except Exception as e:
+        logger.critical("error occured while deleting. {0}".format(e))
+        raise
 
 def getAllID(db):
     db.execute("select id from wojaks")
@@ -70,9 +91,25 @@ def resetPool(db):
     logger.info(str(pool))
     return pool
 
-def chooseRandom(db, pool):
+def addToPool(pool, ID):
+    pool.append(ID)
+    return pool
+
+def removeFromPool(pool, ID):
+    pool.remove(ID)
+    return pool
+
+def chooseRandom(pool):
+    return randrange(0, len(pool))
+
+def chooseRandomGreeting(pool):
+    logger.info("choosing random greeting...")
+    choice = chooseRandom(pool)
+    return pool[choice]
+
+def chooseRandomImg(db, pool):
     logger.info("choosing random from pool {0}".format(pool))
-    choice = randrange(0, len(pool))
+    choice = chooseRandom(pool)
     ID = pool[choice]
     db.execute("select name, img from wojaks where id = ?", (ID,))
     img = db.fetchone()
