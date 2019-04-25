@@ -81,7 +81,7 @@ async def _resetpool(ctx):
         except Exception as e:
             logger.critical("error occurred while resetting pool. {0}".format(e))
             await ctx.send("I don't feel so good...")
-        raise
+            raise
     else:
         await ctx.send("Permission denied...")
 
