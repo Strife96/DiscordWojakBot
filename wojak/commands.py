@@ -4,6 +4,7 @@ logger = logging.getLogger("commands")
 logger.info("Running commands...")
 
 import sys
+import os
 from . import config
 from . import botframe
 from . import functions
@@ -41,7 +42,7 @@ async def _add(ctx, msgID):
                         database.IDpool = functions.addToDB(database.wojakdb, blob, ext, database.IDpool)
                         await ctx.message.add_reaction("👍")
                     else:
-                        logger.critical("blob error occured...")
+                        logger.critical("blob error occurred...")
                         await ctx.message.add_reaction("👎")
                 else:
                     logger.critical("extension not allowed...")
@@ -50,11 +51,12 @@ async def _add(ctx, msgID):
                 logger.critical("message had no attachments...")
                 await ctx.message.add_reaction("👎")
         except Exception as e:
-            logger.critical("error occured adding image {0}. {1}".format(msgID, e))
+            logger.critical("error occurred adding image {0}. {1}".format(msgID, e))
             await ctx.message.add_reaction("👎")
             raise # discord should ignore this, but I still want to see error output
     else:
         await ctx.send("Permission denied...")
+
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_remove'])
 async def _remove(ctx, imgName):
@@ -68,6 +70,31 @@ async def _remove(ctx, imgName):
         logger.critical("error occured while removing img {0}. {1}".format(imgName, e))
         await ctx.message.add_reaction("👎")
         raise
+
+
+@botframe.bot.command(aliases=config.cfg['bot']['commands']['_resetpool'])
+async def _resetpool(ctx):
+    try:
+        database.IDpool = functions.resetPool(database.wojakdb)
+        await ctx.send("Pool reset successful. Pool size is now {0}".format(len(database.IDpool)))
+    except Exception as e:
+        logger.critical("error occurred while resetting pool. {0}".format(e))
+        await ctx.send("I don't feel so good...")
+        raise
+
+
+@botframe.bot.command(aliases=config.cfg['bot']['commands']['_checkdb'])
+async def _checkdb(ctx):
+    try:
+        size = os.stat(config.cfg['db']['path']).st_size
+        count = len(functions.getAllID(database.wojakdb))
+        poolsize = len(database.IDpool)
+        await ctx.send("Database size is {0} bytes. Number of records is {1}. Pool size is {2}.".format(size, count, poolsize))
+    except Exception as e:
+        logger.critical("error occurred while checking db. {0}".format(e))
+        await ctx.send("I don't feel so good...")
+        raise
+
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_shutdown'])
 async def _shutdown(ctx):

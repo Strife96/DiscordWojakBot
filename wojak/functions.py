@@ -86,9 +86,8 @@ def resetPool(db):
     pool = []
     allID = getAllID(db)
     for ID in allID:
-        logger.info("Adding {0} to pool".format(ID[0]))
         pool.append(ID[0])
-    logger.info(str(pool))
+    logger.info("Pool size is now {0}".format(len(pool)))
     return pool
 
 def addToPool(pool, ID):
