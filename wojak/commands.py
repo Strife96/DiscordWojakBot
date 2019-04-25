@@ -53,35 +53,24 @@ async def _add(ctx, msgID):
         except Exception as e:
             logger.critical("error occurred adding image {0}. {1}".format(msgID, e))
             await ctx.message.add_reaction("👎")
-            raise # discord should ignore this, but I still want to see error output
     else:
         await ctx.send("Permission denied...")
 
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_remove'])
 async def _remove(ctx, imgName):
-    try:
-        if fromAdmin(ctx):
-            database.IDpool = functions.removeFromDB(database.wojakdb, imgName, database.IDpool)
-            await ctx.message.add_reaction("👍")
-        else:
-            await ctx.send("Permission denied...")
-    except Exception as e:
-        logger.critical("error occured while removing img {0}. {1}".format(imgName, e))
-        await ctx.message.add_reaction("👎")
-        raise
+    if fromAdmin(ctx):
+        database.IDpool = functions.removeFromDB(database.wojakdb, imgName, database.IDpool)
+        await ctx.message.add_reaction("👍")
+    else:
+        await ctx.send("Permission denied...")
 
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_resetpool'])
 async def _resetpool(ctx):
     if fromAdmin(ctx):
-        try:
-            database.IDpool = functions.resetPool(database.wojakdb)
-            await ctx.send("Pool reset successful. Pool size is now {0}".format(len(database.IDpool)))
-        except Exception as e:
-            logger.critical("error occurred while resetting pool. {0}".format(e))
-            await ctx.send("I don't feel so good...")
-            raise
+        database.IDpool = functions.resetPool(database.wojakdb)
+        await ctx.send("Pool reset successful. Pool size is now {0}".format(len(database.IDpool)))
     else:
         await ctx.send("Permission denied...")
 
@@ -89,15 +78,10 @@ async def _resetpool(ctx):
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_checkdb'])
 async def _checkdb(ctx):
     if fromAdmin(ctx):
-        try:
-            size = os.stat(config.cfg['db']['path']).st_size
-            count = len(functions.getAllID(database.wojakdb))
-            poolsize = len(database.IDpool)
-            await ctx.send("Database size is {0} bytes. Number of records is {1}. Pool size is {2}.".format(size, count, poolsize))
-        except Exception as e:
-            logger.critical("error occurred while checking db. {0}".format(e))
-            await ctx.send("I don't feel so good...")
-            raise
+        size = os.stat(config.cfg['db']['path']).st_size
+        count = len(functions.getAllID(database.wojakdb))
+        poolsize = len(database.IDpool)
+        await ctx.send("Database size is {0} bytes. Number of records is {1}. Pool size is {2}.".format(size, count, poolsize))
     else:
         await ctx.send("Permission denied...")
         
