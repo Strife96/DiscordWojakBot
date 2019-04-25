@@ -74,27 +74,33 @@ async def _remove(ctx, imgName):
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_resetpool'])
 async def _resetpool(ctx):
-    try:
-        database.IDpool = functions.resetPool(database.wojakdb)
-        await ctx.send("Pool reset successful. Pool size is now {0}".format(len(database.IDpool)))
-    except Exception as e:
-        logger.critical("error occurred while resetting pool. {0}".format(e))
-        await ctx.send("I don't feel so good...")
+    if fromAdmin(ctx):
+        try:
+            database.IDpool = functions.resetPool(database.wojakdb)
+            await ctx.send("Pool reset successful. Pool size is now {0}".format(len(database.IDpool)))
+        except Exception as e:
+            logger.critical("error occurred while resetting pool. {0}".format(e))
+            await ctx.send("I don't feel so good...")
         raise
+    else:
+        await ctx.send("Permission denied...")
 
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_checkdb'])
 async def _checkdb(ctx):
-    try:
-        size = os.stat(config.cfg['db']['path']).st_size
-        count = len(functions.getAllID(database.wojakdb))
-        poolsize = len(database.IDpool)
-        await ctx.send("Database size is {0} bytes. Number of records is {1}. Pool size is {2}.".format(size, count, poolsize))
-    except Exception as e:
-        logger.critical("error occurred while checking db. {0}".format(e))
-        await ctx.send("I don't feel so good...")
-        raise
-
+    if fromAdmin(ctx):
+        try:
+            size = os.stat(config.cfg['db']['path']).st_size
+            count = len(functions.getAllID(database.wojakdb))
+            poolsize = len(database.IDpool)
+            await ctx.send("Database size is {0} bytes. Number of records is {1}. Pool size is {2}.".format(size, count, poolsize))
+        except Exception as e:
+            logger.critical("error occurred while checking db. {0}".format(e))
+            await ctx.send("I don't feel so good...")
+            raise
+    else:
+        await ctx.send("Permission denied...")
+        
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_shutdown'])
 async def _shutdown(ctx):
