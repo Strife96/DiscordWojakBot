@@ -107,7 +107,6 @@ def chooseRandomGreeting(pool):
     return pool[choice]
 
 def chooseRandomImg(db, pool):
-    logger.info("choosing random from pool {0}".format(pool))
     choice = chooseRandom(pool)
     ID = pool[choice]
     db.execute("select name, img from wojaks where id = ?", (ID,))
