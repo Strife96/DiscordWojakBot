@@ -24,4 +24,3 @@ else:
     conn.isolation_level = None
     wojakdb = conn.cursor()
     IDpool = functions.resetPool(wojakdb)
-    logger.info(str(IDpool))
