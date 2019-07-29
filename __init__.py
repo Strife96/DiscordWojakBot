@@ -1,7 +1,7 @@
 import logging
 import os
 
-LOGGER_NAMES = ["__init__", "botframe", "commands", "config", "database", "functions"]
+LOGGER_NAMES = ["__init__", "botframe", "commands", "config", "database", "functions", "blackjack"]
 
 if os.path.exists("WojaksBadDay"):
     mode = "a"

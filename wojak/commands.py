@@ -5,10 +5,13 @@ logger.info("Running commands...")
 
 import sys
 import os
+import asyncio
+import signal
 from . import config
 from . import botframe
 from . import functions
 from . import database
+from . import blackjack
 
 from discord.ext import commands
 from discord import file
@@ -51,6 +54,20 @@ async def wojak(ctx):
 async def new_fren(ctx):
     logger.info("posting inv link for user {0} from guild {1}".format(ctx.message.author, ctx.message.channel.guild))
     await ctx.send(config.cfg['bot']['invite'])
+
+# begins a game of blackjack in the channel where this command was found.
+@botframe.bot.command(aliases=config.cfg['bot']['commands']['woblackjack'])
+@commands.cooldown(3, 30, commands.BucketType.channel)
+async def woblackjack(ctx):
+    if ctx.message.author.id in database.blackjackPlayers:
+        await ctx.send("Sorry, you can only play in one game at a time.")
+    elif ctx.channel.id not in database.blackjackChannels:
+        database.blackjackChannels.add(ctx.channel.id)
+        game = blackjack.Game(ctx, database.moneydbpath, database.blackjackChannels, database.blackjackPlayers)
+        database.awaitPool.append(asyncio.create_task(game.runGame()))
+    else:
+        await ctx.send("A game is already running in this channel")
+    
 
 # adds several images to the database using their msgIDs, separated by spaces.
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_add'])
@@ -122,6 +139,8 @@ async def _checkdb(ctx):
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_shutdown'])
 async def _shutdown(ctx):
     if fromAdmin(ctx):
+        for task in database.awaitPool:
+            await task
         await botframe.bot.close()
         sys.exit(0)
     else:

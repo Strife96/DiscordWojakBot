@@ -112,3 +112,9 @@ def chooseRandomImg(db, pool):
     db.execute("select name, img from wojaks where id = ?", (ID,))
     img = db.fetchone()
     return img
+
+def createConnection(path):
+    return sqlite3.connect(path)
+
+
+
