@@ -107,7 +107,7 @@ class Game:
         for message in messages:
             if (len(self.playerDict) + len(rawPlayers)) >= PLAYER_LIMIT:
                 break
-            if message.content == "join" and message.author not in rawPlayers and message.author.id not in self.allPlayerSet:
+            if message.content.lower() == "join" and message.author not in rawPlayers and message.author.id not in self.allPlayerSet:
                 rawPlayers.append(message.author)
                 self.allPlayerSet.add(message.author.id)
         await self.createPlayers(rawPlayers)
@@ -120,7 +120,7 @@ class Game:
     def remove(self, player):
         self.cashOut(player)
         self.playerDict.pop(player.getID())
-        self.allPlayerSet.remove(player.getID())
+        self.allPlayerSet.discard(player.getID())
 
 
     async def removeIdlePlayer(self, player, removeSet, message):
@@ -137,11 +137,14 @@ class Game:
 
         messages = await self.ctx.history(after=removeMessage, before=datetime.utcnow()).flatten()
         for message in messages:
-            if message.author.id in self.currentPlayerIDs and message.content == "stay":
-                removeSet.remove(message.author.id)
+            if message.author.id in self.currentPlayerIDs and message.content.lower() == "stay":
+                removeSet.discard(message.author.id)
 
         for player in list(iter(self.currentPlayers)):
-            await self.removeIdlePlayer(player, removeSet, "{0}, you'll be leaving with {1} feelbucks. See ya next time!".format(player.getName(), player.getWallet()))
+            if player.getWallet() == 0:
+                await self.removeIdlePlayer(player, set([player.getID()]), "{0}, you ran out of feelbucks, I know that feel... If you join again you'll get 100 feelbucks... for a price.".format(player.getName()))
+            else:
+                await self.removeIdlePlayer(player, removeSet, "{0}, you'll be leaving with {1} feelbucks. See ya next time!".format(player.getName(), player.getWallet()))
 
         if self.playerDict:
             await self.ctx.send("The remaining players are:\n{0}".format(self.allPlayersStr()))
@@ -169,7 +172,7 @@ class Game:
 
 
     def isValidBet(self, message):
-        if len(message) == 2 and message[0] == "bet":
+        if len(message) == 2 and message[0].lower() == "bet":
             try:
                 value = int(message[1])
                 if value > 0:
@@ -192,7 +195,7 @@ class Game:
                     if betValue > player.getWallet():
                         betValue = player.getWallet()
                     player.placeBet(betValue)
-                    removeSet.remove(message.author.id)
+                    removeSet.discard(message.author.id)
         for player in list(iter(self.currentPlayers)):
             await self.removeIdlePlayer(player, removeSet, "Sorry {0}, you were removed for inactivity...".format(player.name))
 
@@ -213,17 +216,17 @@ class Game:
             await sleep(3)
             for player in self.currentPlayers:
                 if player.getHandValue() < 21:
-                    await self.ctx.send("{0}, you have lost your bet... Your hand was {0}".format(player.getName(), player.currentHandStr()))
+                    await self.ctx.send("{0}, you have lost your bet...".format(player.getName()))
                     await sleep(3)
                     player.loseHand()
                 elif player.getHandValue() == 21:
-                    await self.ctx.send("{0}, you got blackjack too! Looks like we push... Your hand was {0}".format(player.getName(), player.currentHandStr()))
+                    await self.ctx.send("{0}, you got blackjack too! Looks like we push...".format(player.getName()))
                     await sleep(3)
                     player.pushHand()
             return True
         for player in self.currentPlayers:
             if player.getHandValue() == 21:
-                await self.ctx.send("Congrats {0}, you got blackjack, you win your bet! {0}".format(player.getName(), player.currentHandStr()))
+                await self.ctx.send("Congrats {0}, you got blackjack, you win your bet!".format(player.getName()))
                 player.winHand()
         return False
 
@@ -246,40 +249,41 @@ class Game:
 
             messages = await self.ctx.history(after=optionMessage, before=datetime.utcnow()).flatten()
             for message in messages:
-                if message.content == "hit":
-                    player.hit(self.shoe.draw())
-                    if await self.checkBust(player):
-                        player.loseHand()
-                    else:
-                        await self.ctx.send("Hit!")
-                        await sleep(1)
-                    idle = False
-                    break
+                if message.author.id == player.getID():
+                    if message.content.lower() == "hit":
+                        player.hit(self.shoe.draw())
+                        if await self.checkBust(player):
+                            player.loseHand()
+                        else:
+                            await self.ctx.send("Hit!")
+                            await sleep(1)
+                        idle = False
+                        break
 
-                elif message.content == "stay":
-                    player.stay()
-                    idle = False
-                    break
+                    elif message.content.lower() == "stay":
+                        player.stay()
+                        idle = False
+                        break
 
-                elif message.content == "double" and player.canDouble():
-                    await self.ctx.send("Double down! Your bet is doubled, but you must receive one card and stay")
-                    await sleep(3)
-                    player.double()
-                    player.hit(self.shoe.draw())
-                    if await self.checkBust(player):
-                        player.loseHand()
-                    await self.ctx.send("Your hand will stay at\n{0}".format(player.currentHandStr()))
-                    player.stay()
-                    await sleep(3)
-                    idle = False
-                    break
+                    elif message.content.lower() == "double" and player.canDouble():
+                        await self.ctx.send("Double down! Your bet is doubled, but you must receive one card and stay")
+                        await sleep(3)
+                        player.double()
+                        player.hit(self.shoe.draw())
+                        if await self.checkBust(player):
+                            player.loseHand()
+                            await self.ctx.send("Your hand will stay at\n{0}".format(player.currentHandStr()))
+                        player.stay()
+                        await sleep(3)
+                        idle = False
+                        break
 
-                elif message.content == "split" and player.canSplit():
-                    player.split()
-                    await self.ctx.send("Split! Your two hands are now:\n{0}\nYou will play each hand regularly, in succession...".format(player.allHandsStr()))
-                    await sleep(3)
-                    idle = False
-                    break
+                    elif message.content.lower() == "split" and player.canSplit():
+                        player.split()
+                        await self.ctx.send("Split! Your two hands are now:\n{0}\nYou will play each hand regularly, in succession...".format(player.allHandsStr()))
+                        await sleep(3)
+                        idle = False
+                        break
                     
             if idle:
                 await self.removeIdlePlayer(player, set([player.getID()]), "Sorry {0}, you were removed for inactivity and current bets have been lost...".format(player.name))
@@ -357,6 +361,7 @@ class Game:
         await self.dealCards()
         
         if await self.checkNaturals(): # returns True if dealer got natural, meaning current hand ends immediately
+            await self.showOutcome()
             self.resetHands()
             return
         
@@ -369,7 +374,7 @@ class Game:
             await self.serveDealer()
             await self.resolveOutcome()
         else:
-            self.ctx.send("Looks like no playable hands are left, so I don't need to draw...")
+            await self.ctx.send("Looks like no playable hands are left, so I don't need to draw...")
             await sleep(3)
     
         await self.showOutcome()
@@ -673,7 +678,8 @@ class Shoe:
             for name in FACE_CARDS:
                 for suit in SUITS:
                     self.cards.append(Card(name, 10, suit))
-            self.cards.append(Card("A", 11, suit))
+            for suit in SUITS:        
+                self.cards.append(Card("A", 11, suit))
 
 
     def draw(self):
