@@ -6,7 +6,7 @@
 		"token":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 		"description":"Hi, my name's Wojack, and I post pictures. Let's be frens. For any feedback, inquiries, suggestions, etc message @Strife#1407",
 		"prefix":"?",
-		"invite":"https://discordapp.com/api/oauth2/authorize?client_id=569402803634569224&permissions=378944&scope=bot",
+		"invite":"Your bot's invite link",
 		"playing":"Wojak 1.0 | ?new_fren",
 		"commands":{
 			"info":["help"],
@@ -23,6 +23,9 @@
 	"db":{
 		"path":"WojaksPictureBook",
 		"extensions":[".jpg", ".gif", ".bmp", ".png", ".JPG", ".GIF", ".BMP", ".PNG"]
+	},
+	"money":{
+		"path":"WojaksLedger"
 	},
 	"greetings":["Hello there, fren!", "Hi!", "Hey!", "'Sup!", "Yo!", "Waddup!", "Ayyy lmao"]
 }
