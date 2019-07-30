@@ -9,7 +9,14 @@ from asyncio import sleep
 from datetime import datetime
 from . import functions
 
+# Imagine a language without enforced constants LUL
+
 PLAYER_LIMIT = 6 #max players in one game
+PLAY = "PLAY"
+WIN = "WIN"
+PUSH = "PUSH"
+LOSE = "LOSE"
+
 
 class Game:
     def __init__(self, ctx, dbpath, channelSet, allPlayerSet):
@@ -45,11 +52,20 @@ class Game:
 
 
     def allHandsStr(self):
-        string = "\n--\n"
+        string = "\n--\n\n"
         allPlayers = list(iter(self.currentPlayers))
-        string += self.dealer.handStr()
+        string += self.dealer.getName() + "'s hand:\n " + self.dealer.handHideStr() + "\n\n"
         for player in allPlayers:
-            string += player.allHandsStr()
+            string += player.getName() + "'s hands:\n " + player.allHandsStr()
+        return string + "--\n"
+
+
+    def allResultsStr(self):
+        string = "\n--\n\n"
+        allPlayers = list(iter(self.currentPlayers))
+        string += self.dealer.getName() + "'s hand:\n " + self.dealer.handShowStr() + "\n\n"
+        for player in allPlayers:
+            string += player.getName() + "'s hands:\n " + player.allResultsStr()
         return string + "--\n"
 
 
@@ -63,8 +79,14 @@ class Game:
             self.cursor.execute("select wallet from money where id = ?", (player.id,))
             wallet = self.cursor.fetchone()
             if wallet:
-                newPlayer = Player(player.name, player.id, wallet[0])
-                await self.ctx.send("Welcome back, {0}! You currently have {1} feelbucks!".format(player.name, wallet[0]))
+                withdraw = wallet[0]
+                if withdraw == 0:
+                    withdraw = 100
+                    newPlayer = Player(player.name, player.id, withdraw)
+                    await self.ctx.send("Welcome back, {0}! You ran out of money, but you sold us your car for 100 feelbucks!".format(player.name, withdraw))
+                else:
+                    newPlayer = Player(player.name, player.id, withdraw)
+                    await self.ctx.send("Welcome back, {0}! You currently have {1} feelbucks!".format(player.name, withdraw))
             else:
                 newPlayer = Player(player.name, player.id, 100)
                 self.cursor.execute("insert into money values (?, ?)", (player.id, 100))
@@ -133,6 +155,19 @@ class Game:
         self.playerDict = dict()
 
 
+    def resetHands(self):
+        self.dealer.resetHand()
+        for player in self.currentPlayers:
+            player.resetHands()
+
+   
+    def hasPlayable(self):
+        for player in self.currentPlayers:
+            if player.hasPlayable():
+                return True
+        return False
+
+
     def isValidBet(self, message):
         if len(message) == 2 and message[0] == "bet":
             try:
@@ -145,8 +180,8 @@ class Game:
 
     async def gatherBets(self):
         removeSet = set(iter(self.currentPlayerIDs))
-        betMessage = await self.ctx.send('Time to place your bets! Type "bet <value>" to bet. Values greater than your wallet will bet your entire remaining balance. Betting ends in 15 seconds!' + self.allWalletsStr())
-        await sleep(15)
+        betMessage = await self.ctx.send('Time to place your bets! Values greater than your wallet will bet your entire remaining balance. Betting ends in 20 seconds!\n**Type "bet <value>" to place your bet**' + self.allWalletsStr())
+        await sleep(20)
         messages = await self.ctx.history(after=betMessage, before=datetime.utcnow()).flatten()
         for message in messages:
             if message.author.id in removeSet:
@@ -159,7 +194,7 @@ class Game:
                     player.placeBet(betValue)
                     removeSet.remove(message.author.id)
         for player in list(iter(self.currentPlayers)):
-            await self.removeIdlePlayer(player, removeSet, "Sorry {0}, you were removed for inactivity and current bets have been lost...".format(player.name))
+            await self.removeIdlePlayer(player, removeSet, "Sorry {0}, you were removed for inactivity...".format(player.name))
 
 
     async def dealCards(self):
@@ -167,13 +202,152 @@ class Game:
             for player in self.currentPlayers:
                 player.hit(self.shoe.draw())
             self.dealer.hit(self.shoe.draw())
-        await self.ctx.send("The cards have been dealt, let's see what we got..." + self.allHandsStr() + "\n Take your time to inspect the table! The game continues in 30 seconds")
-        await sleep(30)
-
+        await self.ctx.send("The cards have been dealt, let's see what we got..." + self.allHandsStr() + "Take your time to inspect the table! The game continues in 20 seconds...")
+        await sleep(20)
         
-    async def playBlackjack(self):
-        await self.ctx.send("Alright, the players are rounded up. The order of play will be:\n{0}\nFrom here on out, idle players will be removed from the game and lose their bets. Pay attention!\n".format(self.allPlayersStr()))
+
+    async def checkNaturals(self):
         await sleep(3)
+        if self.dealer.getHandValue() == 21:
+            await self.ctx.send("Woblakjak! Any players who failed to get a natural will lose their bet...\n" + self.dealer.handShowStr())
+            await sleep(3)
+            for player in self.currentPlayers:
+                if player.getHandValue() < 21:
+                    await self.ctx.send("{0}, you have lost your bet... Your hand was {0}".format(player.getName(), player.currentHandStr()))
+                    await sleep(3)
+                    player.loseHand()
+                elif player.getHandValue() == 21:
+                    await self.ctx.send("{0}, you got blackjack too! Looks like we push... Your hand was {0}".format(player.getName(), player.currentHandStr()))
+                    await sleep(3)
+                    player.pushHand()
+            return True
+        for player in self.currentPlayers:
+            if player.getHandValue() == 21:
+                await self.ctx.send("Congrats {0}, you got blackjack, you win your bet! {0}".format(player.getName(), player.currentHandStr()))
+                player.winHand()
+        return False
+
+
+    async def checkBust(self, player):
+        if player.getHandValue() > 21:
+            await self.ctx.send("You bust! You lose your bet...\n{0}".format(player.currentHandStr()))
+            await sleep(3)
+            return True
+        return False
+
+
+    async def playHands(self, player):
+        await self.ctx.send("It's your turn, {0}! You have 8 seconds for each choice.".format(player.getName()))
+        await sleep(1)
+        while player.stillPlaying():
+            idle = True
+            optionMessage = await self.ctx.send("{0}\nOptions: {1}".format(player.currentHandStr(), player.optionsStr()))
+            await sleep(10)
+
+            messages = await self.ctx.history(after=optionMessage, before=datetime.utcnow()).flatten()
+            for message in messages:
+                if message.content == "hit":
+                    player.hit(self.shoe.draw())
+                    if await self.checkBust(player):
+                        player.loseHand()
+                    else:
+                        await self.ctx.send("Hit!")
+                        await sleep(1)
+                    idle = False
+                    break
+
+                elif message.content == "stay":
+                    player.stay()
+                    idle = False
+                    break
+
+                elif message.content == "double" and player.canDouble():
+                    await self.ctx.send("Double down! Your bet is doubled, but you must receive one card and stay")
+                    await sleep(3)
+                    player.double()
+                    player.hit(self.shoe.draw())
+                    if await self.checkBust(player):
+                        player.loseHand()
+                    await self.ctx.send("Your hand will stay at\n{0}".format(player.currentHandStr()))
+                    player.stay()
+                    await sleep(3)
+                    idle = False
+                    break
+
+                elif message.content == "split" and player.canSplit():
+                    player.split()
+                    await self.ctx.send("Split! Your two hands are now:\n{0}\nYou will play each hand regularly, in succession...".format(player.allHandsStr()))
+                    await sleep(3)
+                    idle = False
+                    break
+                    
+            if idle:
+                await self.removeIdlePlayer(player, set([player.getID()]), "Sorry {0}, you were removed for inactivity and current bets have been lost...".format(player.name))
+                break
+ 
+
+    async def servePlayers(self):
+        for player in list(iter(self.currentPlayers)):
+            if player.stillPlaying():
+                await self.playHands(player)
+    
+
+    async def dealerBust(self):
+        for player in self.currentPlayers:
+            player.resetCurrentHand()
+            while player.stillPlaying():
+                if player.getHandState() == PLAY:
+                    player.winHand()
+                    player.stay()
+                else:
+                    player.stay()
+
+
+    async def resolveOutcome(self):
+        for player in self.currentPlayers:
+            player.resetCurrentHand()
+            while player.stillPlaying():
+                if player.getHandState() == PLAY:
+                    if player.getHandValue() > self.dealer.getHandValue():
+                        player.winHand()
+                    elif player.getHandValue() == self.dealer.getHandValue():
+                        player.pushHand()
+                    else:
+                        player.loseHand()
+                else:
+                    player.stay()
+
+
+    async def serveDealer(self):
+        await self.ctx.send("My turn! I stay on soft 17 or higher...{0}".format(self.dealer.handShowStr()))
+        await sleep(3)
+        busted = False
+        while self.dealer.stillPlaying():
+            self.dealer.hit(self.shoe.draw())
+            if self.dealer.getHandValue() > 21:
+                await self.ctx.send("I bust! Players who didn't bust will win their bet!\n{0}".format(self.dealer.handShowStr()))
+                await self.dealerBust()
+                await sleep(3)
+            elif self.dealer.getHandValue() >= 17:
+                await self.ctx.send("Here's the hand to beat...\n{0}".format(self.dealer.handShowStr()))
+                await sleep(3)
+            else:
+                await self.ctx.send("{0}  Hit!".format(self.dealer.handShowStr()))
+                await sleep(3)
+
+
+    async def showOutcome(self):
+        await self.ctx.send("Here's the outcome of all the hands played!" + self.allResultsStr())
+        await sleep(3)
+        await self.ctx.send("Let's see the damage to your wallets..." + self.allWalletsStr() + "We'll move on in 20 seconds")
+        await sleep(20)
+
+
+    async def playBlackjack(self):
+        await self.ctx.send("Alright, the players are rounded up. The order of play will be:\n{0}".format(self.allPlayersStr()))
+        await sleep(2)
+        await self.ctx.send("From here on out, idle players will be removed from the game and lose their bets. Pay attention!\n")
+        await sleep(2)
 
         await self.gatherBets()
         
@@ -182,6 +356,25 @@ class Game:
         
         self.shuffleShoe()
         await self.dealCards()
+        
+        if await self.checkNaturals(): # returns True if dealer got natural, meaning current hand ends immediately
+            self.resetHands()
+            return
+        
+        await self.servePlayers()
+        
+        if not self.playerDict: # again check to make sure all players were not idle
+            return
+        
+        if self.hasPlayable():
+            await self.serveDealer()
+            await self.resolveOutcome()
+        else:
+            self.ctx.send("Looks like no playable hands are left, so I don't need to draw...")
+            await sleep(3)
+    
+        await self.showOutcome()
+        self.resetHands()
 
 
     async def runGame(self):
@@ -212,15 +405,34 @@ class Dealer:
 
     def hit(self, card):
         self.hand.add(card)
-        return self.hand.getValue() > 21
+
+
+    def stillPlaying(self):
+        return self.hand.getValue() < 17
+
+
+    def getName(self):
+        return self.name
 
 
     def getHandValue(self):
         return self.hand.getValue()
 
 
+    def resetHand(self):
+        self.hand = Hand()
+
+
     def handStr(self):
-        return self.name + "'s hand (dealer) :\n" + "{0}\n\n".format(self.hand.dealerStr())
+        return "{0}".format(self.hand.dealerHideStr())
+
+
+    def handHideStr(self):
+        return self.hand.dealerHideStr()
+
+    
+    def handShowStr(self):
+        return self.hand.dealerShowStr()
 
 
 class Player:
@@ -230,23 +442,34 @@ class Player:
         self.wallet = wallet
         self.hands = [Hand()]
         self.currentHand = 0
-        self.totalBet = 0
 
 
     def hit(self, card):
         self.hands[self.currentHand].add(card)
-        return self.hands[self.currentHand].getValue() > 21
 
 
-    def nextHand(self):
+    def stay(self):
         self.currentHand += 1
-        return self.currentHand < len(self.hands)
+
+
+    def hasPlayable(self):
+        for hand in self.hands:
+            if hand.getState() == PLAY:
+                return True
+        return False
+
+
+    def canSplit(self):
+        return self.hands[self.currentHand].canSplit()
 
             
     def split(self):
+        amount = self.hands[self.currentHand].getBet()
+        self.wallet -= amount
         card = self.hands[self.currentHand].split()
         splitHand = Hand()
         splitHand.add(card)
+        splitHand.placeBet(amount)
         self.hands.append(splitHand)
 
 
@@ -254,10 +477,17 @@ class Player:
         return self.hands[self.currentHand].getValue()
 
     
+    def getHandState(self):
+        return self.hands[self.currentHand].getState()
+
+
     def placeBet(self, amount):
-        #self.wallet -= amount
-        self.totalBet += amount
+        self.wallet -= amount
         self.hands[self.currentHand].placeBet(amount)
+
+    
+    def canDouble(self):
+        return self.hands[self.currentHand].canDouble() and self.hands[self.currentHand].getBet() < self.wallet
 
 
     def double(self):
@@ -266,15 +496,36 @@ class Player:
         self.hands[self.currentHand].double()
 
 
-    def winsHand(self):
+    def winHand(self):
+        self.hands[self.currentHand].win()
         amount = self.hands[self.currentHand].getBet()
         self.wallet += (amount * 2)
-        self.totalBet -= amount
+        self.currentHand += 1
+
+
+    def pushHand(self):
+        self.hands[self.currentHand].push()
+        amount = self.hands[self.currentHand].getBet()
+        self.wallet += (amount)
+        self.currentHand += 1
+
+
+    def loseHand(self):
+        self.hands[self.currentHand].lose()
+        self.currentHand += 1
 
 
     def resetHands(self):
         self.hands = [Hand()]
         self.currentHand = 0
+
+
+    def resetCurrentHand(self):
+        self.currentHand = 0
+
+
+    def stillPlaying(self):
+        return self.currentHand < len(self.hands)
 
 
     def getID(self):
@@ -288,12 +539,33 @@ class Player:
     def getName(self):
         return self.name
 
+    
+    def optionsStr(self):
+        string = "(  hit  stay  "
+        if self.canDouble():
+            string += "double  "
+        if self.canSplit():
+            string += "split  "
+        return string + ")"
+        
+
+
+    def currentHandStr(self):
+        return str(self.hands[self.currentHand])
+
 
     def allHandsStr(self):
-        string = self.name + "'s hands:\n"
+        string = ""
         for hand in self.hands:
             string += ("{0}\n\n".format(str(hand)))
         return string 
+
+
+    def allResultsStr(self):
+        string = ""
+        for hand in self.hands:
+            string += ("{0}\n\n".format(hand.resultStr()))
+        return string
 
 
 class Hand:
@@ -302,6 +574,7 @@ class Hand:
         self.softAces = 0
         self.value = 0
         self.bet = 0
+        self.state = PLAY
 
 
     def add(self, card):
@@ -317,17 +590,24 @@ class Hand:
     def placeBet(self, amount):
         self.bet = amount
 
+    
+    def canDouble(self):
+        return len(self.cards) == 2 and self.value in [9, 10, 11]
+
 
     def double(self):
         self.bet *= 2
 
 
+    def canSplit(self):
+        return len(self.cards) == 2 and self.cards[0].getName() == self.cards[1].getName()
+
+
     def split(self):
         card = self.cards.pop()
-        if card == self.cards[0]:
-            self.value = card.getValue()
-            if card.getValue() == 11:
-                self.softAces = 1
+        self.value = card.getValue()
+        if card.getValue() == 11:
+            self.softAces = 1
         return card
 
 
@@ -335,15 +615,42 @@ class Hand:
         return self.bet
 
 
+    def lose(self):
+        self.state = LOSE
+        return self.state
+
+
+    def push(self):
+        self.state = PUSH
+        return self.state
+
+
+    def win(self):
+        self.state = WIN
+        return self.state
+
+
     def getValue(self):
         return self.value
 
 
-    def dealerStr(self):
+    def getState(self):
+        return self.state
+
+
+    def dealerHideStr(self):
         string = "[ (??)  "
         for card in self.cards[1:] if len(self.cards) >= 2 else list():
             string += "{0} ".format(str(card))
         return string + "]"
+
+
+    def dealerShowStr(self):
+        return allCardStr(self.cards) + "  " + str(self.value) 
+
+
+    def resultStr(self):
+        return allCardStr(self.cards) + "  " + str(self.value) + "    // Bet: " + str(self.bet) + "    " + self.state
 
 
     def __str__(self):
@@ -395,6 +702,10 @@ class Card:
     def getCopy(self):
         return Card(self.name, self.value, self.suit)
 
+
+    def getName(self):
+        return self.name
+    
 
     def getValue(self):
         return self.value
