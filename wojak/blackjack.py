@@ -298,7 +298,6 @@ class Game:
             while player.stillPlaying():
                 if player.getHandState() == PLAY:
                     player.winHand()
-                    player.stay()
                 else:
                     player.stay()
 
@@ -319,7 +318,7 @@ class Game:
 
 
     async def serveDealer(self):
-        await self.ctx.send("My turn! I stay on soft 17 or higher...{0}".format(self.dealer.handShowStr()))
+        await self.ctx.send("My turn! I stay on soft 17 or higher...\n{0}".format(self.dealer.handShowStr()))
         await sleep(3)
         busted = False
         while self.dealer.stillPlaying():
