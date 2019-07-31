@@ -80,7 +80,7 @@ class Game:
             wallet = self.cursor.fetchone()
             if wallet:
                 withdraw = wallet[0]
-                if withdraw == 0:
+                if withdraw <= 0: # just in case negative money comes up somehow
                     withdraw = 100
                     newPlayer = Player(player.name, player.id, withdraw)
                     await self.ctx.send("Welcome back, {0}! You ran out of money, but you sold us your car for 100 feelbucks!".format(player.name, withdraw))
@@ -472,7 +472,7 @@ class Player:
 
 
     def canSplit(self):
-        return self.hands[self.currentHand].canSplit()
+        return self.hands[self.currentHand].canSplit() and self.hands[self.currentHand].getBet() < self.wallet
 
             
     def split(self):
