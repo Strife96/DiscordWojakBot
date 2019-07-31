@@ -54,9 +54,9 @@ class Game:
     def allHandsStr(self):
         string = "\n--\n\n"
         allPlayers = list(iter(self.currentPlayers))
-        string += self.dealer.getName() + "'s hand:\n " + self.dealer.handHideStr() + "\n\n"
+        string += self.dealer.getName() + "'s hand:\n" + self.dealer.handHideStr() + "\n\n"
         for player in allPlayers:
-            string += player.getName() + "'s hands:\n " + player.allHandsStr()
+            string += player.getName() + "'s hands:\n" + player.allHandsStr()
         return string + "--\n"
 
 
@@ -678,7 +678,7 @@ class Hand:
 
 
     def dealerHideStr(self):
-        string = "[ (??)  "
+        string = "[ (??)   "
         for card in self.cards[1:] if len(self.cards) >= 2 else list():
             string += "{0} ".format(str(card))
         return string + "]"
