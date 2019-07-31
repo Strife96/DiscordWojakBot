@@ -240,7 +240,7 @@ class Game:
 
 
     async def playHands(self, player):
-        await self.ctx.send("It's your turn, {0}! You have 10 seconds for each choice.".format(player.getName()))
+        await self.ctx.send("It's your turn, {0}! You have 10 seconds for each choice.\n{1} Wojak's hand\n--".format(player.getName(), self.dealer.handHideStr()))
         await sleep(2)
         while player.stillPlaying():
             idle = True
@@ -273,7 +273,7 @@ class Game:
                         player.hit(self.shoe.draw())
                         if await self.checkBust(player):
                             player.loseHand()
-                            await self.ctx.send("Your hand will stay at\n{0}".format(player.currentHandStr()))
+                        await self.ctx.send("Your hand will stay at\n{0}".format(player.currentHandStr()))
                         player.stay()
                         await sleep(3)
                         idle = False
@@ -689,11 +689,11 @@ class Hand:
 
 
     def resultStr(self):
-        return allCardStr(self.cards) + "  " + str(self.value) + "    // Bet: " + str(self.bet) + "    " + self.state
+        return allCardStr(self.cards) + "  " + str(self.value) + "     //  Bet: " + str(self.bet) + "    " + self.state
 
 
     def __str__(self):
-        return allCardStr(self.cards) + "  " + str(self.value) + "    // Bet: " + str(self.bet)
+        return allCardStr(self.cards) + "  " + str(self.value) + "     //  Bet: " + str(self.bet)
 
 
 class Shoe:
