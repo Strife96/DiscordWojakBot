@@ -132,8 +132,8 @@ class Game:
 
     async def removePlayers(self):
         removeSet = set(iter(self.currentPlayerIDs))
-        removeMessage = await self.ctx.send('This hand is over, but we\'ll start again in 10 seconds. Type "stay" to remain at the table.')
-        await sleep(10)
+        removeMessage = await self.ctx.send('This hand is over, but we\'ll start again in 15 seconds. Type "stay" to remain at the table.')
+        await sleep(15)
 
         messages = await self.ctx.history(after=removeMessage, before=datetime.utcnow()).flatten()
         for message in messages:
@@ -183,8 +183,8 @@ class Game:
 
     async def gatherBets(self):
         removeSet = set(iter(self.currentPlayerIDs))
-        betMessage = await self.ctx.send('Time to place your bets! Values greater than your wallet will bet your entire remaining balance. Betting ends in 20 seconds!\n**Type "bet <value>" to place your bet**' + self.allWalletsStr())
-        await sleep(20)
+        betMessage = await self.ctx.send('Time to place your bets! Values greater than your wallet will bet your entire remaining balance. Betting ends in 15 seconds!\n**Type "bet <value>" to place your bet**' + self.allWalletsStr())
+        await sleep(15)
         messages = await self.ctx.history(after=betMessage, before=datetime.utcnow()).flatten()
         for message in messages:
             if message.author.id in removeSet:
@@ -205,8 +205,8 @@ class Game:
             for player in self.currentPlayers:
                 player.hit(self.shoe.draw())
             self.dealer.hit(self.shoe.draw())
-        await self.ctx.send("The cards have been dealt, let's see what we got..." + self.allHandsStr() + "Take your time to inspect the table! The game continues in 20 seconds...")
-        await sleep(20)
+        await self.ctx.send("The cards have been dealt, let's see what we got..." + self.allHandsStr() + "Take your time to inspect the table! The game continues in 15 seconds...")
+        await sleep(15)
         
 
     async def checkNaturals(self):
@@ -240,8 +240,8 @@ class Game:
 
 
     async def playHands(self, player):
-        await self.ctx.send("It's your turn, {0}! You have 8 seconds for each choice.".format(player.getName()))
-        await sleep(1)
+        await self.ctx.send("It's your turn, {0}! You have 10 seconds for each choice.".format(player.getName()))
+        await sleep(2)
         while player.stillPlaying():
             idle = True
             optionMessage = await self.ctx.send("{0}\nOptions: {1}".format(player.currentHandStr(), player.optionsStr()))
@@ -262,10 +262,11 @@ class Game:
 
                     elif message.content.lower() == "stay":
                         player.stay()
+                        await sleep(3)
                         idle = False
                         break
 
-                    elif message.content.lower() == "double" and player.canDouble():
+                    elif message.content.lower() == "double" and player.canDouble(): 
                         await self.ctx.send("Double down! Your bet is doubled, but you must receive one card and stay")
                         await sleep(3)
                         player.double()
@@ -284,7 +285,14 @@ class Game:
                         await sleep(3)
                         idle = False
                         break
-                    
+
+                    elif message.content.lower() == "think" and player.canThink():
+                        player.think()
+                        await self.ctx.send("Take your time, think carefully...")
+                        await sleep(3)
+                        idle = False
+                        break
+
             if idle:
                 await self.removeIdlePlayer(player, set([player.getID()]), "Sorry {0}, you were removed for inactivity and current bets have been lost...".format(player.name))
                 break
@@ -327,23 +335,23 @@ class Game:
         busted = False
         while self.dealer.stillPlaying():
             self.dealer.hit(self.shoe.draw())
+            await self.ctx.send("{0} Hit!".format(self.dealer.handShowStr()))
             if self.dealer.getHandValue() > 21:
                 await self.ctx.send("I bust! Players who didn't bust will win their bet!\n{0}".format(self.dealer.handShowStr()))
                 await self.dealerBust()
                 await sleep(3)
             elif self.dealer.getHandValue() >= 17:
-                await self.ctx.send("Here's the hand to beat...\n{0}".format(self.dealer.handShowStr()))
+                await self.ctx.send("The hand to beat...\n{0}".format(self.dealer.handShowStr()))
                 await sleep(3)
             else:
-                await self.ctx.send("{0}  Hit!".format(self.dealer.handShowStr()))
                 await sleep(3)
 
 
     async def showOutcome(self):
         await self.ctx.send("Here's the outcome of all the hands played!" + self.allResultsStr())
         await sleep(3)
-        await self.ctx.send("Let's see the damage to your wallets..." + self.allWalletsStr() + "We'll move on in 20 seconds")
-        await sleep(20)
+        await self.ctx.send("Let's see the damage to your wallets..." + self.allWalletsStr())
+        await sleep(3)
 
 
     async def playBlackjack(self):
@@ -500,6 +508,14 @@ class Player:
         self.hands[self.currentHand].double()
 
 
+    def canThink(self):
+        return self.hands[self.currentHand].canThink() > 0
+
+
+    def think(self):
+        self.hands[self.currentHand].think()
+    
+
     def winHand(self):
         self.hands[self.currentHand].win()
         amount = self.hands[self.currentHand].getBet()
@@ -532,6 +548,10 @@ class Player:
         return self.currentHand < len(self.hands)
 
 
+    def getThinkCounter(self):
+        return self.hands[self.currentHand].getThinkCounter()
+
+
     def getID(self):
         return self.ID
 
@@ -545,11 +565,13 @@ class Player:
 
     
     def optionsStr(self):
-        string = "(  hit  stay  "
+        string = "(   hit   stay   "
         if self.canDouble():
-            string += "double  "
+            string += "double   "
         if self.canSplit():
-            string += "split  "
+            string += "split   "
+        if self.canThink():
+            string += "think [{0} left]   ".format(self.getThinkCounter())
         return string + ")"
         
 
@@ -578,6 +600,7 @@ class Hand:
         self.softAces = 0
         self.value = 0
         self.bet = 0
+        self.thinkCounter = 2
         self.state = PLAY
 
 
@@ -615,6 +638,14 @@ class Hand:
         return card
 
 
+    def canThink(self):
+        return self.thinkCounter > 0
+
+    
+    def think(self):
+        self.thinkCounter -= 1
+
+
     def getBet(self):
         return self.bet
 
@@ -640,6 +671,10 @@ class Hand:
 
     def getState(self):
         return self.state
+
+
+    def getThinkCounter(self):
+        return self.thinkCounter
 
 
     def dealerHideStr(self):

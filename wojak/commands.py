@@ -19,14 +19,15 @@ import discord.utils
 
 HELP_STRING = "```" + config.cfg['bot']['description'] + \
 '''\n
-Prefix: ?
+Prefix: {0}
 Commands:
     info / help - display basic info on bot and commands
     hello / hi / hey - say hi to Wojak and he'll say hi back 
     wojak - post a random picture of Wojak and frens
+    woblakjak - play a game of blackjack vs wojak
     new_fren - get a link to add Wojak to your server
 \n```
-'''
+'''.format(config.cfg['bot']['prefix'])
 botframe.bot.remove_command('help')
 
 # print basic bot info
