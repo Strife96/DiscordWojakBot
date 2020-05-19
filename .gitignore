@@ -3,3 +3,5 @@ config.json
 WojaksBadDay
 WojaksPictureBook
 WojaksLedger
+.vscode
+.env

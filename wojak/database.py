@@ -1,12 +1,12 @@
+from . import functions
+from . import config
+import os
+import sqlite3
 import logging
 
 logger = logging.getLogger("database")
 logger.info("Starting database...")
 
-import sqlite3
-import os
-from . import config
-from . import functions
 
 dbpath = config.cfg['db']['path']
 moneydbpath = config.cfg['moneydb']['path']
@@ -17,7 +17,8 @@ if not os.path.isfile(dbpath):
     conn = sqlite3.connect(dbpath)
     conn.isolation_level = None
     wojakdb = conn.cursor()
-    wojakdb.execute("create table wojaks (id integer primary key, name text, img blob)")
+    wojakdb.execute(
+        "create table wojaks (id integer primary key, name text, img blob)")
     IDpool = []
     blackjackChannels = set()
     blackjackPlayers = set()
@@ -37,5 +38,8 @@ if not os.path.isfile(moneydbpath):
     moneyConn = sqlite3.connect(moneydbpath)
     moneyConn.isolation_level = None
     wojakMoneydb = moneyConn.cursor()
-    wojakMoneydb.execute("create table money (id integer primary key, wallet integer)")
-    moneyConn.close() # only threads will interact with db after creation, this connection can be closed now
+    wojakMoneydb.execute(
+        "create table money (id integer primary key, wallet integer)")
+    # only threads will interact with db after creation, this connection
+    # can be closed now
+    moneyConn.close()

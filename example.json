@@ -1,31 +1,53 @@
 {
-	"permissions":{
-		"admin":000000000000000000
+	"permissions": {
+		"admin": 111111111111111111
 	},
-	"bot":{
-		"token":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-		"description":"Hi, my name's Wojack, and I post pictures. Let's be frens. For any feedback, inquiries, suggestions, etc message @Strife#1407",
-		"prefix":"?",
-		"invite":"Your bot's invite link",
-		"playing":"Wojak 1.0 | ?new_fren",
-		"commands":{
-			"info":["help"],
-			"hello":["hi", "hey"],
-			"wojak":[],
-			"new_fren":[],
-			"_add":[],
-			"_resetpool":[],
-			"_remove":[],
-			"_checkdb":[],
+	"bot": {
+		"token": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		"description": "Hi, my name's Wojak, and I post pictures. Let's be frens. For any feedback, inquiries, suggestions, etc message @Strife#1407",
+		"prefix": "?",
+		"invite": "Your bot's invite link",
+		"playing": "Wojak 1.0 | ?new_fren",
+		"commands": {
+			"info": [
+				"help"
+			],
+			"hello": [
+				"hi",
+				"hey"
+			],
+			"wojak": [],
+			"new_fren": [],
+			"_add": [],
+			"_resetpool": [],
+			"_remove": [],
+			"_checkdb": [],
 			"_shutdown": []
 		}
 	},
-	"db":{
-		"path":"WojaksPictureBook",
-		"extensions":[".jpg", ".gif", ".bmp", ".png", ".JPG", ".GIF", ".BMP", ".PNG"]
+	"db": {
+		"path": "WojaksPictureBook",
+		"extensions": [
+			".jpg",
+			".gif",
+			".bmp",
+			".png",
+			".JPG",
+			".GIF",
+			".BMP",
+			".PNG"
+		]
 	},
-	"money":{
-		"path":"WojaksLedger"
+	"money": {
+		"path": "WojaksLedger"
 	},
-	"greetings":["Hello there, fren!", "Hi!", "Hey!", "'Sup!", "Yo!", "Waddup!", "Ayyy lmao"]
+	"greetings": [
+		"Hello there, fren!",
+		"Hi!",
+		"Hey!",
+		"'Sup!",
+		"Yo!",
+		"Waddup!",
+		"Ayyy lmao"
+	]
 }
