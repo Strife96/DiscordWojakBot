@@ -17,7 +17,12 @@
 				"hey"
 			],
 			"wojak": [],
-			"new_fren": [],
+			"woblackjack": [
+				"blackjack",
+				"woblakjak",
+				"blakjak"
+			],
+			"newfren": [],
 			"_add": [],
 			"_resetpool": [],
 			"_remove": [],
@@ -25,18 +30,10 @@
 			"_shutdown": []
 		}
 	},
-	"db": {
-		"path": "WojaksPictureBook",
-		"extensions": [
-			".jpg",
-			".gif",
-			".bmp",
-			".png",
-			".JPG",
-			".GIF",
-			".BMP",
-			".PNG"
-		]
+	"aws": {
+		"region": "us-east-1",
+		"wojak_image_bucket": "your-bucket-name",
+		"money_db": "your-money-table-name"
 	},
 	"money": {
 		"path": "WojaksLedger"
