@@ -7,7 +7,6 @@ import logging
 logger = logging.getLogger("database")
 logger.info("Starting database...")
 
-dbpath = config.cfg['db']['path']
 moneydbpath = config.cfg['moneydb']['path']
 
 logger.info("Connecting to wojack image db...")
