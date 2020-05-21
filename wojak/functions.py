@@ -1,6 +1,5 @@
 import discord
 from random import randrange
-from hashlib import sha256
 import sqlite3
 import io
 import logging
@@ -48,68 +47,8 @@ async def fileToBlob(attach):
     return blob
 
 
-def isDupe(db, newID):
-    allID = getAllID(db)
-    for oldID in allID:
-        if newID == oldID[0]:
-            return True
-    return False
-
-
 def getExtension(attach):
     return ("." + attach.filename.split(".")[-1])
-
-
-def addToDB(db, blob, extension, pool):
-    digest = sha256(blob).hexdigest()
-    digestStr = str(digest)
-    imgID = int(digestStr, 16) % MAX_SQLINT
-    name = digestStr + extension
-    logger.info("name is {0}...".format(name))
-    if isDupe(db, imgID):
-        logger.info("duplicate image not added, hash {0}".format(imgID))
-        return pool
-    else:
-        db.execute("insert into wojaks values (?, ?, ?)", (imgID, name, blob))
-        logger.info(
-            "logging new image with id {0} , and name {1}".format(imgID, name))
-        return addToPool(pool, imgID)
-
-
-def removeFromDB(db, name, pool):
-    try:
-        db.execute(
-            "select distinct id, name from wojaks where name = ?", (name,)
-        )
-        toRemove = db.fetchone()
-        imgID = toRemove[0]
-        name = toRemove[1]
-        db.execute(
-            "delete from wojaks where id = ? and name = ?", (imgID, name)
-        )
-        logger.info(
-            "deleted img with id = {0} and name = {1}".format(imgID, name)
-        )
-        return removeFromPool(pool, imgID)
-    except Exception as e:
-        logger.critical("error occured while deleting. {0}".format(e))
-        raise
-
-
-def getAllID(db):
-    db.execute("select id from wojaks")
-    allID = db.fetchall()
-    return allID
-
-
-def resetPool(db):
-    logger.info("resetting ID pool...")
-    pool = []
-    allID = getAllID(db)
-    for ID in allID:
-        pool.append(ID[0])
-    logger.info("Pool size is now {0}".format(len(pool)))
-    return pool
 
 
 def addToPool(pool, ID):
@@ -130,14 +69,6 @@ def chooseRandomGreeting(pool):
     logger.info("choosing random greeting...")
     choice = chooseRandom(pool)
     return pool[choice]
-
-
-def chooseRandomImg(db, pool):
-    choice = chooseRandom(pool)
-    ID = pool[choice]
-    db.execute("select name, img from wojaks where id = ?", (ID,))
-    img = db.fetchone()
-    return img
 
 
 def createConnection(path):

@@ -2,8 +2,10 @@ import wojak
 import logging
 import os
 
+# yikes
 LOGGER_NAMES = ["__init__", "botframe", "commands",
-                "config", "database", "functions", "blackjack"]
+                "config", "database", "functions",
+                "blackjack", "s3images"]
 
 if os.path.exists("WojaksBadDay"):
     mode = "a"

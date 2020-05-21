@@ -12,4 +12,3 @@ and I'm proud of him, dammit.
 * Migrate local db content to AWS S3 and DynamoDB
 * Add bot admin configuration and commands, i.e. add admin users, mute bot in channels, set cooldown timers, etc.
 * Refactor modules to more cleanly separate db/function code.
-* Rename new_fren command to newfren maybe???

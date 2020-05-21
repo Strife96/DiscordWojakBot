@@ -5,14 +5,26 @@ from . import database
 from . import functions
 from . import botframe
 from . import config
+from . import s3images
 import asyncio
-import os
 import sys
 import logging
 
 logger = logging.getLogger("commands")
 logger.info("Running commands...")
 
+WOJAK_IMAGE_BUCKET = config.cfg['aws']['wojak_image_bucket']
+
+EXTENSIONS = [
+    ".jpg",
+    ".gif",
+    ".bmp",
+    ".png",
+    ".JPG",
+    ".GIF",
+    ".BMP",
+    ".PNG"
+]
 
 HELP_STRING = "```" + config.cfg['bot']['description'] + \
     f'''\n
@@ -22,7 +34,7 @@ Commands:
     hello / hi / hey - say hi to Wojak and he'll say hi back
     wojak - post a random picture of Wojak and frens
     woblakjak - play a game of blackjack vs wojak
-    new_fren - get a link to add Wojak to your server
+    newfren - get a link to add Wojak to your server
 \n```
 '''
 botframe.bot.remove_command('help')
@@ -46,20 +58,20 @@ async def hello(ctx):
 # posts it to channel where request occurred
 
 
-@botframe.bot.command(aliases=config.cfg['bot']['commands']['wojak'])
+@botframe.bot.command()
 @commands.cooldown(1, 15, commands.BucketType.channel)
 async def wojak(ctx):
     logger.info("posting a random boi...")
-    img = functions.chooseRandomImg(database.wojakdb, database.IDpool)
-    newFile = functions.blobToFile(img[0], img[1])
+    img = s3images.chooseRandomImg(WOJAK_IMAGE_BUCKET, database.IDpool)
+    name = img[0] + img[2]  # img[0] is ID, img[2] is file extension from Metadata
+    newFile = functions.blobToFile(name, img[1])
     await ctx.send(file=newFile)
 
-# posts a message containing the invite link
-# for this bot to join other servers.
 
+@botframe.bot.command(aliases=config.cfg['bot']['commands']['newfren'])
+async def newfren(ctx):
+    """posts a message containing the invite link for this bot to join other servers."""
 
-@botframe.bot.command(aliases=config.cfg['bot']['commands']['new_fren'])
-async def new_fren(ctx):
     logger.info("posting inv link for user {0} from guild {1}".format(
         ctx.message.author, ctx.message.channel.guild))
     await ctx.send(config.cfg['bot']['invite'])
@@ -84,8 +96,11 @@ async def woblackjack(ctx):
 
 
 # adds several images to the database using their msgIDs, separated by spaces.
-@botframe.bot.command(aliases=config.cfg['bot']['commands']['_add'])
+@botframe.bot.command()
 async def _add(ctx, *msgIDs):
+    """
+        Adds an image to the wojak s3 bucket
+    """
     if fromAdmin(ctx):
         resultStr = ""
         addedStr = ""
@@ -96,12 +111,12 @@ async def _add(ctx, *msgIDs):
                 if msg.attachments:
                     attach = msg.attachments[0]
                     ext = functions.getExtension(attach)
-                    if ext in config.cfg['db']['extensions']:
+                    if ext in EXTENSIONS:
                         blob = await functions.fileToBlob(attach)
                         ext = functions.getExtension(attach)
                         if blob:
-                            database.IDpool = functions.addToDB(
-                                database.wojakdb, blob, ext, database.IDpool)
+                            database.IDpool = s3images.addToS3(
+                                WOJAK_IMAGE_BUCKET, blob, ext, database.IDpool)
                             addedStr += f"{msgID}; "
                         else:
                             logger.critical("blob error occurred...")
@@ -120,48 +135,49 @@ async def _add(ctx, *msgIDs):
     else:
         await ctx.send("Permission denied...")
 
-# removes an image from the database based on the image filename.
-
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_remove'])
 async def _remove(ctx, imgName):
+    """
+        Removes an image from wojak s3 bucket by ID
+    """
     if fromAdmin(ctx):
-        database.IDpool = functions.removeFromDB(
-            database.wojakdb, imgName, database.IDpool)
+        database.IDpool = s3images.removeFromS3(
+            WOJAK_IMAGE_BUCKET, imgName, database.IDpool)
         await ctx.message.add_reaction("👍")
     else:
         await ctx.send("Permission denied...")
 
-# reseets the image IDpool and outputs current pool size.
-
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_resetpool'])
 async def _resetpool(ctx):
+    """
+        Resets the image pool to align with the number of images currently in the s3 bucket
+    """
     if fromAdmin(ctx):
-        database.IDpool = functions.resetPool(database.wojakdb)
+        database.IDpool = s3images.resetPool(WOJAK_IMAGE_BUCKET)
         await ctx.send(
             f"Pool reset successful. Pool size is now {len(database.IDpool)}"
         )
     else:
         await ctx.send("Permission denied...")
 
-# outputs size of database in bytes, number of records
-# in database, and number of IDs in pool.
-# the record count and pool size should always match.
-
 
 @botframe.bot.command(aliases=config.cfg['bot']['commands']['_checkdb'])
 async def _checkdb(ctx):
+    """
+        Outputs the number of records in the s3 bucket as well as internal pool size
+    """
     if fromAdmin(ctx):
-        size = os.stat(config.cfg['db']['path']).st_size
-        count = len(functions.getAllID(database.wojakdb))
+        count = len(s3images.getAllID(WOJAK_IMAGE_BUCKET))
         poolsize = len(database.IDpool)
         await ctx.send(
-            f"Database size is {size} bytes. Number of "
-            f"records is {count}. Pool size is {poolsize}."
+            f"Number of records is {count}. Pool size is {poolsize}."
         )
     else:
         await ctx.send("Permission denied...")
+
+# closes the bot's connection to discord and exits program.
 
 # closes the bot's connection to discord and exits program.
 
