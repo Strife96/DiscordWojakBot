@@ -3,5 +3,7 @@ config.json
 WojaksBadDay
 WojaksPictureBook
 WojaksLedger
+pidfile
+nohup.out
 .vscode
 .env
